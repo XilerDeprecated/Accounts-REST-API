@@ -7,16 +7,21 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::{structs::user::FullUser, traits::PersistentStorageProvider};
+use crate::{
+    structs::user::FullUser,
+    traits::{PersistentStorageProvider, TemporaryStorageProvider},
+};
 
 pub struct InMemoryDataProvider {
     users: HashMap<Uuid, FullUser>,
+    sessions: HashMap<String, String>,
 }
 
 impl InMemoryDataProvider {
     pub fn new() -> Self {
         Self {
             users: HashMap::new(),
+            sessions: HashMap::new(),
         }
     }
 }
@@ -44,5 +49,33 @@ impl PersistentStorageProvider for InMemoryDataProvider {
 
         self.users.insert(user.id, user);
         Ok(())
+    }
+
+    async fn get_user_by_id(&self, id: &str) -> Option<FullUser> {
+        let id = Uuid::parse_str(id).unwrap();
+        self.users.get(&id).cloned()
+    }
+
+    async fn delete_user(&mut self, id: String) -> Result<(), String> {
+        let user = self.get_user_by_id(&id).await;
+        match user {
+            Some(user) => {
+                self.users.remove(&user.id);
+                Ok(())
+            }
+            None => Err("User does not exist".to_string()),
+        }
+    }
+}
+
+#[async_trait]
+impl TemporaryStorageProvider for InMemoryDataProvider {
+    async fn get(&mut self, key: String) -> Option<String> {
+        self.sessions.get(&key).cloned()
+    }
+
+    async fn set(&mut self, key: String, value: String) -> bool {
+        self.sessions.insert(key, value);
+        true
     }
 }

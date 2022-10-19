@@ -1,3 +1,5 @@
 mod persistent_storage_provider;
+mod temporary_storage_provider;
 
 pub use persistent_storage_provider::PersistentStorageProvider;
+pub use temporary_storage_provider::TemporaryStorageProvider;

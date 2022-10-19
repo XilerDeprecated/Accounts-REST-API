@@ -28,6 +28,7 @@ pub struct UserRegistration {
     pub password: String,
 }
 
+#[derive(Clone)]
 pub struct FullUser {
     pub id: Uuid,
     pub username: String,

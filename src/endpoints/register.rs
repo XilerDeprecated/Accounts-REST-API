@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Mutex};
 
-use actix_web::web::Data;
+use actix_web::{web::Data, HttpRequest};
 use chrono::{DateTime, Utc};
 use paperclip::actix::{api_v2_operation, web::Json, Apiv2Schema, CreatedJson};
 use serde::Serialize;
@@ -13,8 +13,11 @@ use crate::{
         user::{FullUser, User, UserRegistration},
         Status,
     },
-    traits::PersistentStorageProvider,
-    util::data::PersistentStorage,
+    traits::{PersistentStorageProvider, TemporaryStorageProvider},
+    util::{
+        data::{PersistentStorage, TemporaryStorage},
+        sessions::generate_browser_session,
+    },
 };
 
 /// Merge the user with the session details
@@ -28,12 +31,15 @@ pub struct UserRegistrationResponse {
 /// If a user already exists, a bad request is returned with some more information.
 #[api_v2_operation]
 pub async fn register(
-    db: Data<Mutex<PersistentStorage>>,
+    persistent: Data<Mutex<PersistentStorage>>,
+    temporary: Data<Mutex<TemporaryStorage>>,
     body: Json<UserRegistration>,
+    data: HttpRequest,
 ) -> Result<CreatedJson<UserRegistrationResponse>, ClientError> {
     let created_at = Utc::now();
+    let id = Uuid::new_v4();
     let full_user = FullUser {
-        id: Uuid::new_v4(),
+        id,
         username: body.username.clone(),
         email: body.email.clone(),
         created_at,
@@ -42,27 +48,34 @@ pub async fn register(
         verification_token: "".to_string(),
     };
 
-    let mut db = db.lock().unwrap();
-    if let Err(e) = db.register_user(full_user).await {
-        return Err(ClientError::BadRequest(Status {
-            message: e,
-            code: 400,
-        }));
+    let mut persistent = persistent.lock().unwrap();
+    if let Err(e) = persistent.register_user(full_user).await {
+        return Err(ClientError::BadRequest(Status { message: e }));
     }
-    drop(db);
+    drop(persistent);
+
+    let user_agent = match data.headers().get("User-Agent") {
+        Some(agent) => agent,
+        None => {
+            return Err(ClientError::BadRequest(Status {
+                message: "No user agent present".to_string(),
+            }))
+        }
+    };
+
+    let token = generate_browser_session(user_agent.to_str().unwrap().to_string());
+    let mut temporary = temporary.lock().unwrap();
+    temporary.set(token.clone(), id.to_string()).await;
 
     Ok(CreatedJson(UserRegistrationResponse {
         user: User {
-            id: body.username.clone(),
+            id: id.to_string(),
             username: body.username.clone(),
             email: body.email.clone(),
             created_at: seconds_since_epoch(&created_at),
             roles: 0,
         },
-        session: Session {
-            token: "".to_string(),
-            ttl: 0,
-        },
+        session: Session { token, ttl: 0 },
     }))
 }
 
