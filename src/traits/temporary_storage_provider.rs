@@ -6,5 +6,5 @@ pub trait TemporaryStorageProvider {
     async fn get(&mut self, key: String) -> Option<String>;
     // pub async fn get_by_value(&self, key: String) -> Option<String>;
     async fn set(&mut self, key: String, value: String) -> bool;
-    // pub async fn delete(&self, key: &str) -> bool;
+    async fn delete(&mut self, key: String) -> bool;
 }

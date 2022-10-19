@@ -26,6 +26,8 @@ pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Sta
     let res = db.delete_user(user.id.to_string()).await;
     drop(db);
 
+    // TODO: Drop all sessions from that user
+
     match res {
         Ok(_) => Ok(Json(Status {
             message: "success".to_string(),

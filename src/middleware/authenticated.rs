@@ -15,6 +15,7 @@ use crate::{
     structs::{user::FullUser, Status},
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
+    util::hashing::xx_hash128,
 };
 
 pub struct AuthenticationService {
@@ -78,13 +79,14 @@ where
                 return Box::pin(async move { Ok(ServiceResponse::new(req, res)) });
             }
         };
+        let cookie = cookie.value().to_string();
 
         let db = self.database.clone();
         let svc = self.service.clone();
 
         Box::pin(async move {
             let mut temporary = db.temporary.lock().unwrap();
-            let client_id = temporary.get(cookie.value().to_string()).await;
+            let client_id = temporary.get(cookie.clone()).await;
             drop(temporary);
 
             if client_id.is_none() {
@@ -97,8 +99,27 @@ where
 
                 return Ok(ServiceResponse::new(req, res));
             }
-
             let client_id = client_id.unwrap();
+
+            let received_user_agent_hashed = cookie.split(".").nth(1).unwrap();
+            let user_agent = req.headers().get("User-Agent").unwrap().to_str().unwrap();
+            let user_agent_hashed = xx_hash128(user_agent.to_string());
+            let same_client = received_user_agent_hashed == user_agent_hashed;
+
+            if !same_client {
+                let (req, _pl) = req.into_parts();
+                let res = HttpResponse::Gone()
+                    .json(Status {
+                        message: "Anti-Cookie theft has removed this sessions.".to_string(),
+                    })
+                    .map_into_right_body();
+
+                let mut temporary = db.temporary.lock().unwrap();
+                temporary.delete(cookie).await;
+                drop(temporary);
+
+                return Ok(ServiceResponse::new(req, res));
+            }
 
             let persistent = db.persistent.lock().unwrap();
             let full_user = persistent.get_user_by_id(client_id).await;
@@ -119,6 +140,7 @@ where
             req.extensions_mut().insert(full_user);
 
             let res = svc.call(req).await?;
+
             Ok(res.map_into_left_body())
         })
     }

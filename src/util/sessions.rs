@@ -1,18 +1,4 @@
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
-
-fn random_string(length: usize) -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
-}
-
-fn xx_hash128(data: String) -> String {
-    // TODO: Implement xxHash128
-    data
-}
+use super::{hashing::xx_hash128, random::random_string};
 
 pub fn generate_browser_session(user_agent: String) -> String {
     let random = random_string(63);

@@ -78,4 +78,9 @@ impl TemporaryStorageProvider for InMemoryDataProvider {
         self.sessions.insert(key, value);
         true
     }
+
+    async fn delete(&mut self, key: String) -> bool {
+        self.sessions.remove(&key);
+        true
+    }
 }

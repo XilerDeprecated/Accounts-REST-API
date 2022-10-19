@@ -16,4 +16,5 @@ paperclip = { version = "0.7.1", features = ["actix4", "v3"] }
 rand = "0.8.5"
 serde = { version = "1.0.145", features = ["derive"] }
 tokio = "1.21.2"
+twox-hash = "1.6.3"
 uuid = { version = "1.2.1", features = ["v4", "serde"] }
