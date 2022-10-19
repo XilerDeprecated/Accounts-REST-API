@@ -4,10 +4,20 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use paperclip::actix::Apiv2Schema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 type UserAuthenticationMap = HashMap<u8, String>;
+
+#[derive(Serialize, Apiv2Schema)]
+pub struct User {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    pub created_at: usize,
+    /// A small int that contains the user roles, can be parsed by using bitwize operations.
+    pub roles: u8,
+}
 
 /// Contains the minimum data for a user to register.
 #[derive(Deserialize, Apiv2Schema)]
