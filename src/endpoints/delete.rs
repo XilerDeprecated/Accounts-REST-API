@@ -8,7 +8,7 @@ use crate::{
         user::{FullUser, User},
         Status,
     },
-    traits::PersistentStorageProvider,
+    traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
 };
 
@@ -22,11 +22,14 @@ pub struct UserRegistrationResponse {
 /// Delete your account
 #[api_v2_operation]
 pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Status>, ClientError> {
-    let mut db = db.persistent.lock().unwrap();
-    let res = db.delete_user(user.id.to_string()).await;
-    drop(db);
+    let mut persistent = db.persistent.lock().unwrap();
+    let res = persistent.delete_user(user.id.to_string()).await;
+    drop(persistent);
 
-    // TODO: Drop all sessions from that user
+    let mut temporary = db.temporary.lock().unwrap();
+    let keys = temporary.get_by_value(user.id.to_string()).await;
+    temporary.drop_all(keys).await;
+    drop(temporary);
 
     match res {
         Ok(_) => Ok(Json(Status {
