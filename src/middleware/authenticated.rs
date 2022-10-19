@@ -2,32 +2,32 @@ use futures::future::LocalBoxFuture;
 use std::{
     future::{ready, Ready},
     rc::Rc,
-    sync::Mutex,
 };
 
 use actix_web::{
     body::EitherBody,
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    web::Data,
-    Error, HttpResponse,
+    dev::{forward_ready, Payload, Service, ServiceRequest, ServiceResponse, Transform},
+    Error, FromRequest, HttpMessage, HttpRequest, HttpResponse,
 };
 
 use crate::{
-    constants::SESSION_KEY, structs::Status, traits::TemporaryStorageProvider,
-    util::data::TemporaryStorage,
+    constants::SESSION_KEY,
+    structs::{user::FullUser, Status},
+    traits::{PersistentStorageProvider, TemporaryStorageProvider},
+    types::FullDatabase,
 };
 
-pub struct Authenticated {
-    temporary_storage: Data<Mutex<TemporaryStorage>>,
+pub struct AuthenticationService {
+    database: FullDatabase,
 }
 
-impl Authenticated {
-    pub fn new(temporary_storage: Data<Mutex<TemporaryStorage>>) -> Self {
-        Self { temporary_storage }
+impl AuthenticationService {
+    pub fn new(database: FullDatabase) -> AuthenticationService {
+        Self { database }
     }
 }
 
-impl<S: 'static, B> Transform<S, ServiceRequest> for Authenticated
+impl<S: 'static, B> Transform<S, ServiceRequest> for AuthenticationService
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -42,14 +42,14 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticatedMiddleware {
             service: Rc::new(service),
-            temporary_storage: self.temporary_storage.clone(),
+            database: self.database.clone(),
         }))
     }
 }
 
 pub struct AuthenticatedMiddleware<S> {
     service: Rc<S>,
-    temporary_storage: Data<Mutex<TemporaryStorage>>,
+    database: FullDatabase,
 }
 
 impl<S, B> Service<ServiceRequest> for AuthenticatedMiddleware<S>
@@ -79,13 +79,13 @@ where
             }
         };
 
-        let db = self.temporary_storage.clone();
+        let db = self.database.clone();
         let svc = self.service.clone();
 
         Box::pin(async move {
-            let mut db = db.lock().unwrap();
-            let client_id = db.get(cookie.value().to_string()).await;
-            drop(db);
+            let mut temporary = db.temporary.lock().unwrap();
+            let client_id = temporary.get(cookie.value().to_string()).await;
+            drop(temporary);
 
             if client_id.is_none() {
                 let (req, _pl) = req.into_parts();
@@ -98,9 +98,38 @@ where
                 return Ok(ServiceResponse::new(req, res));
             }
 
-            let res = svc.call(req).await?;
+            let client_id = client_id.unwrap();
 
+            let persistent = db.persistent.lock().unwrap();
+            let full_user = persistent.get_user_by_id(client_id).await;
+            drop(persistent);
+
+            if full_user.is_none() {
+                let (req, _pl) = req.into_parts();
+                let res = HttpResponse::Gone()
+                    .json(Status {
+                        message: "User does not exist anymore.".to_string(),
+                    })
+                    .map_into_right_body();
+
+                return Ok(ServiceResponse::new(req, res));
+            }
+            let full_user = full_user.unwrap();
+
+            req.extensions_mut().insert(full_user);
+
+            let res = svc.call(req).await?;
             Ok(res.map_into_left_body())
         })
+    }
+}
+
+impl FromRequest for FullUser {
+    type Error = Error;
+    type Future = Ready<Result<FullUser, Error>>;
+
+    #[inline]
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        ready(Ok(req.extensions().get::<FullUser>().unwrap().clone()))
     }
 }

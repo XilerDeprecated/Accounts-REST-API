@@ -1,3 +1,3 @@
 mod authenticated;
 
-pub use authenticated::Authenticated;
+pub use authenticated::AuthenticationService;

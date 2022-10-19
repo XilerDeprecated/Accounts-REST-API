@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::collections::HashMap;
 
-use actix_web::{web::Data, HttpRequest};
+use actix_web::HttpRequest;
 use chrono::{DateTime, Utc};
 use paperclip::actix::{api_v2_operation, web::Json, Apiv2Schema, CreatedJson};
 use serde::Serialize;
@@ -14,10 +14,8 @@ use crate::{
         Status,
     },
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
-    util::{
-        data::{PersistentStorage, TemporaryStorage},
-        sessions::generate_browser_session,
-    },
+    types::FullDatabase,
+    util::sessions::generate_browser_session,
 };
 
 /// Merge the user with the session details
@@ -31,8 +29,7 @@ pub struct UserRegistrationResponse {
 /// If a user already exists, a bad request is returned with some more information.
 #[api_v2_operation]
 pub async fn register(
-    persistent: Data<Mutex<PersistentStorage>>,
-    temporary: Data<Mutex<TemporaryStorage>>,
+    db: FullDatabase,
     body: Json<UserRegistration>,
     data: HttpRequest,
 ) -> Result<CreatedJson<UserRegistrationResponse>, ClientError> {
@@ -48,11 +45,12 @@ pub async fn register(
         verification_token: "".to_string(),
     };
 
-    let mut persistent = persistent.lock().unwrap();
-    if let Err(e) = persistent.register_user(full_user).await {
+    let mut persistent = db.persistent.lock().unwrap();
+    let res = persistent.register_user(full_user).await;
+    drop(persistent);
+    if let Err(e) = res {
         return Err(ClientError::BadRequest(Status { message: e }));
     }
-    drop(persistent);
 
     let user_agent = match data.headers().get("User-Agent") {
         Some(agent) => agent,
@@ -64,7 +62,7 @@ pub async fn register(
     };
 
     let token = generate_browser_session(user_agent.to_str().unwrap().to_string());
-    let mut temporary = temporary.lock().unwrap();
+    let mut temporary = db.temporary.lock().unwrap();
     temporary.set(token.clone(), id.to_string()).await;
 
     Ok(CreatedJson(UserRegistrationResponse {

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use paperclip::actix::Apiv2Schema;
+use paperclip::actix::{Apiv2Schema, Apiv2Security};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -28,7 +28,8 @@ pub struct UserRegistration {
     pub password: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Apiv2Security)]
+#[openapi(apiKey)]
 pub struct FullUser {
     pub id: Uuid,
     pub username: String,

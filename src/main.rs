@@ -1,12 +1,14 @@
-use std::sync::Mutex;
+use std::sync::Arc;
 
 use actix_web::{middleware::Logger, web::Data, App, HttpServer};
 use env_logger::Env;
-use middleware::Authenticated;
+use middleware::AuthenticationService;
 use paperclip::actix::{
     web::{delete, post, resource},
     OpenApiExt,
 };
+use types::FullDatabase;
+use util::Database;
 
 use crate::util::data::{PersistentStorage, TemporaryStorage};
 
@@ -16,12 +18,13 @@ mod errors;
 mod middleware;
 mod structs;
 mod traits;
+mod types;
 mod util;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let persistent_db = Data::new(Mutex::new(PersistentStorage::new()));
-    let temporary_db = Data::new(Mutex::new(TemporaryStorage::new()));
+    let database = Database::new(TemporaryStorage::new(), PersistentStorage::new());
+    let thread_db: FullDatabase = Data::new(Arc::new(database));
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
@@ -29,12 +32,11 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap_api()
             .wrap(Logger::default())
-            .app_data(persistent_db.clone())
-            .app_data(temporary_db.clone())
+            .app_data(thread_db.clone())
             .service(resource("/register").route(post().to(endpoints::register)))
             .service(
                 resource("/me")
-                    .wrap(Authenticated::new(temporary_db.clone()))
+                    .wrap(AuthenticationService::new(thread_db.clone()))
                     .route(delete().to(endpoints::delete_account)),
             )
             // OpenAPI spec:

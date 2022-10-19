@@ -28,22 +28,22 @@ impl InMemoryDataProvider {
 
 #[async_trait]
 impl PersistentStorageProvider for InMemoryDataProvider {
-    async fn does_username_exist(&self, username: &str) -> bool {
+    async fn does_username_exist(&self, username: String) -> bool {
         self.users
             .values()
             .any(|user| user.username == username.to_string())
     }
 
-    async fn does_email_exist(&self, email: &str) -> bool {
+    async fn does_email_exist(&self, email: String) -> bool {
         self.users
             .values()
             .any(|user| user.email == email.to_string())
     }
 
     async fn register_user(&mut self, user: FullUser) -> Result<(), String> {
-        if self.does_username_exist(&user.username).await {
+        if self.does_username_exist(user.username.clone()).await {
             return Err("User already exists".to_string());
-        } else if self.does_email_exist(&user.email).await {
+        } else if self.does_email_exist(user.email.clone()).await {
             return Err("Email already exists".to_string());
         }
 
@@ -51,13 +51,13 @@ impl PersistentStorageProvider for InMemoryDataProvider {
         Ok(())
     }
 
-    async fn get_user_by_id(&self, id: &str) -> Option<FullUser> {
-        let id = Uuid::parse_str(id).unwrap();
+    async fn get_user_by_id(&self, id: String) -> Option<FullUser> {
+        let id = Uuid::parse_str(&id).unwrap();
         self.users.get(&id).cloned()
     }
 
     async fn delete_user(&mut self, id: String) -> Result<(), String> {
-        let user = self.get_user_by_id(&id).await;
+        let user = self.get_user_by_id(id).await;
         match user {
             Some(user) => {
                 self.users.remove(&user.id);
