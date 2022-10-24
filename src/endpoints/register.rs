@@ -15,7 +15,7 @@ use crate::{
     },
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
-    util::sessions::generate_browser_session,
+    util::{parse::parse_user_agent, sessions::generate_browser_session},
 };
 
 /// Merge the user with the session details
@@ -60,8 +60,10 @@ pub async fn register(
             }))
         }
     };
+    let ip = data.peer_addr().unwrap().ip().to_string();
+    let parsed_user_agent = parse_user_agent(user_agent.to_str().unwrap().to_string());
 
-    let token = generate_browser_session(user_agent.to_str().unwrap().to_string());
+    let token = generate_browser_session(ip, parsed_user_agent);
     let mut temporary = db.temporary.lock().unwrap();
     temporary.set(token.clone(), id.to_string()).await;
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+// use actix_cors::Cors;
 use actix_web::{middleware::Logger, web::Data, App, HttpServer};
 use env_logger::Env;
 use middleware::AuthenticationService;
@@ -29,8 +30,14 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     HttpServer::new(move || {
+        // let cors = Cors::default()
+        //     .allowed_origin("http://localhost:80")
+        //     .allowed_methods(vec!["GET", "POST", "DELETE"])
+        //     .max_age(3600);
+
         App::new()
             .wrap_api()
+            // .wrap(cors)
             .wrap(Logger::default())
             .app_data(thread_db.clone())
             .service(resource("/register").route(post().to(endpoints::register)))
