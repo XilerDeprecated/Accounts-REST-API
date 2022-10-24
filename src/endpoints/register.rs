@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use actix_web::HttpRequest;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use paperclip::actix::{api_v2_operation, web::Json, Apiv2Schema, CreatedJson};
 use serde::Serialize;
 use uuid::Uuid;
@@ -46,7 +46,7 @@ pub async fn register(
     };
 
     let mut persistent = db.persistent.lock().unwrap();
-    let res = persistent.register_user(full_user).await;
+    let res = persistent.register_user(full_user.clone()).await;
     drop(persistent);
     if let Err(e) = res {
         return Err(ClientError::BadRequest(Status { message: e }));
@@ -68,17 +68,7 @@ pub async fn register(
     temporary.set(token.clone(), id.to_string()).await;
 
     Ok(CreatedJson(UserRegistrationResponse {
-        user: User {
-            id: id.to_string(),
-            username: body.username.clone(),
-            email: body.email.clone(),
-            created_at: seconds_since_epoch(&created_at),
-            roles: 0,
-        },
+        user: full_user.to_user(),
         session: Session { token, ttl: 0 },
     }))
-}
-
-fn seconds_since_epoch(created_at: &DateTime<Utc>) -> usize {
-    created_at.timestamp() as usize
 }

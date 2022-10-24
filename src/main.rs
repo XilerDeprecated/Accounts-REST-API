@@ -5,7 +5,7 @@ use actix_web::{middleware::Logger, web::Data, App, HttpServer};
 use env_logger::Env;
 use middleware::AuthenticationService;
 use paperclip::actix::{
-    web::{delete, post, resource},
+    web::{delete, get, post, resource},
     OpenApiExt,
 };
 use types::FullDatabase;
@@ -44,7 +44,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 resource("/me")
                     .wrap(AuthenticationService::new(thread_db.clone()))
-                    .route(delete().to(endpoints::delete_account)),
+                    .route(delete().to(endpoints::delete_account))
+                    .route(get().to(endpoints::get_account)),
             )
             // OpenAPI spec:
             .with_json_spec_at("/spec/v2")
