@@ -147,7 +147,7 @@ impl PersistentStorageProvider for ScyllaDataProvider {
             .await
     }
 
-    async fn register_user(&mut self, user: FullUser) -> Result<(), String> {
+    async fn register_user(&self, user: FullUser) -> Result<(), String> {
         if self.does_username_exist(user.username.clone()).await {
             return Err("User already exists".to_string());
         } else if self.does_email_exist(user.email.clone()).await {
@@ -174,7 +174,7 @@ impl PersistentStorageProvider for ScyllaDataProvider {
         }
     }
 
-    async fn delete_user(&mut self, id: Uuid) -> Result<(), String> {
+    async fn delete_user(&self, id: Uuid) -> Result<(), String> {
         match self
             .session
             .execute(&self.prepared.delete_user, (id,))

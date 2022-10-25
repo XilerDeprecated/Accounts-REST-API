@@ -22,11 +22,11 @@ pub struct UserRegistrationResponse {
 /// Delete your account
 #[api_v2_operation]
 pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Status>, HttpError> {
-    let mut persistent = db.persistent.lock().unwrap();
+    let persistent = db.persistent.lock().unwrap();
     let res = persistent.delete_user(user.id).await;
     drop(persistent);
 
-    let mut temporary = db.temporary.lock().unwrap();
+    let temporary = db.temporary.lock().unwrap();
     temporary.drop_all(user.id.to_string()).await;
     drop(temporary);
 

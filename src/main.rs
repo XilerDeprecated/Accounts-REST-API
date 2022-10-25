@@ -51,6 +51,11 @@ async fn main() -> std::io::Result<()> {
                     .route(delete().to(endpoints::delete_account))
                     .route(get().to(endpoints::get_account)),
             )
+            .service(
+                resource("/logout")
+                    .wrap(AuthenticationService::new(thread_db.clone()))
+                    .route(delete().to(endpoints::logout)),
+            )
             // OpenAPI spec:
             .with_json_spec_at("/spec/v2")
             .with_json_spec_v3_at("/spec/v3")

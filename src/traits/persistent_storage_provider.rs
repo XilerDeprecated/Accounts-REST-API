@@ -16,6 +16,6 @@ pub trait PersistentStorageProvider {
     async fn does_username_exist(&self, username: String) -> bool;
     async fn does_email_exist(&self, email: String) -> bool;
 
-    async fn register_user(&mut self, user: FullUser) -> Result<(), String>;
-    async fn delete_user(&mut self, id: Uuid) -> Result<(), String>;
+    async fn register_user(&self, user: FullUser) -> Result<(), String>;
+    async fn delete_user(&self, id: Uuid) -> Result<(), String>;
 }

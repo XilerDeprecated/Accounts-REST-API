@@ -7,6 +7,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
+    constants::TTL,
     errors::HttpError,
     structs::{
         session::Session,
@@ -60,7 +61,7 @@ pub async fn register(
         verification_token: None,
     };
 
-    let mut persistent = db.persistent.lock().unwrap();
+    let persistent = db.persistent.lock().unwrap();
     let res = persistent.register_user(full_user.clone()).await;
     drop(persistent);
     if let Err(e) = res {
@@ -71,11 +72,11 @@ pub async fn register(
     }
 
     let token = create_browser_session(data)?;
-    let mut temporary = db.temporary.lock().unwrap();
+    let temporary = db.temporary.lock().unwrap();
     temporary.set(token.clone(), id.to_string()).await;
 
     Ok(CreatedJson(UserRegistrationResponse {
         user: full_user.to_user(),
-        session: Session { token, ttl: 0 },
+        session: Session { token, ttl: TTL },
     }))
 }

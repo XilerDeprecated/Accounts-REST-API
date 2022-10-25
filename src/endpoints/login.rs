@@ -3,6 +3,7 @@ use argon2::verify_encoded;
 use paperclip::actix::api_v2_operation;
 
 use crate::{
+    constants::{PASSWORD_AUTHENTICATION, TTL},
     errors::HttpError,
     structs::{
         session::Session,
@@ -15,8 +16,6 @@ use crate::{
 };
 
 type LoginResult = Result<Json<Session>, HttpError>;
-static PASSWORD_AUTHENTICATION: i16 = 0;
-static TTL: usize = 60 * 60 * 24 * 30; // 30 days
 
 #[api_v2_operation]
 pub async fn add_login(db: FullDatabase, body: Json<UserLogin>, data: HttpRequest) -> LoginResult {
@@ -54,7 +53,7 @@ pub async fn add_login(db: FullDatabase, body: Json<UserLogin>, data: HttpReques
 
     let token = create_browser_session(data)?;
 
-    let mut temporary = db.temporary.lock().unwrap();
+    let temporary = db.temporary.lock().unwrap();
     temporary.set(token.clone(), user.id.to_string()).await;
 
     Ok(Json(Session { token, ttl: TTL }))

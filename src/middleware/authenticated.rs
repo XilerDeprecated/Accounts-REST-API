@@ -91,7 +91,7 @@ where
         let svc = self.service.clone();
 
         Box::pin(async move {
-            let mut temporary = db.temporary.lock().unwrap();
+            let temporary = db.temporary.lock().unwrap();
             let client_id = temporary.get(cookie.clone()).await;
             drop(temporary);
 
@@ -194,7 +194,7 @@ where
                         })
                         .map_into_right_body();
 
-                    let mut temporary = db.temporary.lock().unwrap();
+                    let temporary = db.temporary.lock().unwrap();
                     temporary.delete(cookie).await;
                     drop(temporary);
 
