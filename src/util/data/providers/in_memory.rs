@@ -51,12 +51,11 @@ impl PersistentStorageProvider for InMemoryDataProvider {
         Ok(())
     }
 
-    async fn get_user_by_id(&self, id: String) -> Option<FullUser> {
-        let id = Uuid::parse_str(&id).unwrap();
+    async fn get_user_by_id(&self, id: Uuid) -> Option<FullUser> {
         self.users.get(&id).cloned()
     }
 
-    async fn delete_user(&mut self, id: String) -> Result<(), String> {
+    async fn delete_user(&mut self, id: Uuid) -> Result<(), String> {
         let user = self.get_user_by_id(id).await;
         match user {
             Some(user) => {

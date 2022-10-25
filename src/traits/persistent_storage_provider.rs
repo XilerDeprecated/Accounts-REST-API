@@ -3,6 +3,7 @@
 // it stores data that should not expire after a short amount of time. (eg session keys should not
 // be stored here)
 use async_trait::async_trait;
+use uuid::Uuid;
 
 use crate::structs::user::FullUser;
 
@@ -10,11 +11,11 @@ use crate::structs::user::FullUser;
 pub trait PersistentStorageProvider {
     // async fn get_user_by_username(&self, username: String) -> Option<FullUser>;
     // async fn get_user_by_email(&self, email: String) -> Option<FullUser>;
-    async fn get_user_by_id(&self, id: String) -> Option<FullUser>;
+    async fn get_user_by_id(&self, id: Uuid) -> Option<FullUser>;
 
     async fn does_username_exist(&self, username: String) -> bool;
     async fn does_email_exist(&self, email: String) -> bool;
 
     async fn register_user(&mut self, user: FullUser) -> Result<(), String>;
-    async fn delete_user(&mut self, id: String) -> Result<(), String>;
+    async fn delete_user(&mut self, id: Uuid) -> Result<(), String>;
 }

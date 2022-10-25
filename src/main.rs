@@ -24,7 +24,7 @@ mod util;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let database = Database::new(TemporaryStorage::new(), PersistentStorage::new());
+    let database = Database::new(PersistentStorage::new().await, TemporaryStorage::new());
     let thread_db: FullDatabase = Data::new(Arc::new(database));
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));

@@ -3,7 +3,9 @@ use futures::future::LocalBoxFuture;
 use std::{
     future::{ready, Ready},
     rc::Rc,
+    str::FromStr,
 };
+use uuid::Uuid;
 
 use actix_web::{
     body::EitherBody,
@@ -201,7 +203,9 @@ where
             }
 
             let persistent = db.persistent.lock().unwrap();
-            let full_user = persistent.get_user_by_id(client_id).await;
+            let full_user = persistent
+                .get_user_by_id(Uuid::from_str(&client_id).unwrap())
+                .await;
             drop(persistent);
 
             if full_user.is_none() {

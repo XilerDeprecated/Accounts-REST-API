@@ -23,7 +23,7 @@ pub struct UserRegistrationResponse {
 #[api_v2_operation]
 pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Status>, ClientError> {
     let mut persistent = db.persistent.lock().unwrap();
-    let res = persistent.delete_user(user.id.to_string()).await;
+    let res = persistent.delete_user(user.id).await;
     drop(persistent);
 
     let mut temporary = db.temporary.lock().unwrap();
