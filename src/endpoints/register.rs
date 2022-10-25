@@ -7,7 +7,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{
-    errors::ClientError,
+    errors::HttpError,
     structs::{
         session::Session,
         user::{FullUser, User, UserRegistration},
@@ -15,7 +15,7 @@ use crate::{
     },
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
-    util::{parse::parse_user_agent, sessions::generate_browser_session},
+    util::sessions::create_browser_session,
 };
 
 /// Merge the user with the session details
@@ -32,16 +32,26 @@ pub async fn register(
     db: FullDatabase,
     body: Json<UserRegistration>,
     data: HttpRequest,
-) -> Result<CreatedJson<UserRegistrationResponse>, ClientError> {
+) -> Result<CreatedJson<UserRegistrationResponse>, HttpError> {
+    if body.username.is_empty() || body.email.is_empty() || body.password.len() < 8 {
+        return Err(HttpError::BadRequest(Status {
+            message: "Username and email are required. Your password length must also be more than 8. (are you messing with the API? The checks should be handled by the frontend and a basic SHA hash should also be performed there?)".to_string(),
+        }));
+    }
+
     let created_at = Duration::seconds(Utc::now().timestamp());
     let id = Uuid::new_v4();
+    let mut authentication = HashMap::new();
+    // TODO: Hash password
+    authentication.insert(0, body.password.clone());
+
     let full_user = FullUser {
         id,
         username: body.username.clone(),
         email: body.email.clone(),
         created_at,
         roles: 0,
-        authentication: HashMap::new(),
+        authentication,
         // TODO: Generate verification token
         verification_token: None,
     };
@@ -50,21 +60,10 @@ pub async fn register(
     let res = persistent.register_user(full_user.clone()).await;
     drop(persistent);
     if let Err(e) = res {
-        return Err(ClientError::BadRequest(Status { message: e }));
+        return Err(HttpError::InternalServerError(Status { message: e }));
     }
 
-    let user_agent = match data.headers().get("User-Agent") {
-        Some(agent) => agent,
-        None => {
-            return Err(ClientError::BadRequest(Status {
-                message: "No user agent present".to_string(),
-            }))
-        }
-    };
-    let ip = data.peer_addr().unwrap().ip().to_string();
-    let parsed_user_agent = parse_user_agent(user_agent.to_str().unwrap().to_string());
-
-    let token = generate_browser_session(ip, parsed_user_agent);
+    let token = create_browser_session(data)?;
     let mut temporary = db.temporary.lock().unwrap();
     temporary.set(token.clone(), id.to_string()).await;
 

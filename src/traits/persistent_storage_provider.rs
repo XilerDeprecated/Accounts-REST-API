@@ -9,8 +9,8 @@ use crate::structs::user::FullUser;
 
 #[async_trait]
 pub trait PersistentStorageProvider {
-    // async fn get_user_by_username(&self, username: String) -> Option<FullUser>;
-    // async fn get_user_by_email(&self, email: String) -> Option<FullUser>;
+    async fn get_user_by_username(&self, username: String) -> Option<FullUser>;
+    async fn get_user_by_email(&self, email: String) -> Option<FullUser>;
     async fn get_user_by_id(&self, id: Uuid) -> Option<FullUser>;
 
     async fn does_username_exist(&self, username: String) -> bool;

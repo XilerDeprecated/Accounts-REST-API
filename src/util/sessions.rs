@@ -1,6 +1,11 @@
-use crate::structs::user_agent::ParsedUserAgent;
+use actix_web::HttpRequest;
 
-use super::{hashing::xx_hash, random::random_string};
+use crate::{
+    errors::HttpError,
+    structs::{user_agent::ParsedUserAgent, Status},
+};
+
+use super::{hashing::xx_hash, parse::parse_user_agent, random::random_string};
 
 pub fn generate_browser_session(ip: String, user_agent: ParsedUserAgent) -> String {
     let random = random_string(32);
@@ -32,4 +37,19 @@ pub fn generate_browser_session(ip: String, user_agent: ParsedUserAgent) -> Stri
         random,
     ]
     .join(".")
+}
+
+pub fn create_browser_session(data: HttpRequest) -> Result<String, HttpError> {
+    let user_agent = match data.headers().get("User-Agent") {
+        Some(agent) => agent,
+        None => {
+            return Err(HttpError::BadRequest(Status {
+                message: "No user agent present".to_string(),
+            }))
+        }
+    };
+    let ip = data.peer_addr().unwrap().ip().to_string();
+    let parsed_user_agent = parse_user_agent(user_agent.to_str().unwrap().to_string());
+
+    Ok(generate_browser_session(ip, parsed_user_agent))
 }

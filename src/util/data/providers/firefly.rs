@@ -11,9 +11,11 @@ impl FireflyDataProvider {
     pub async fn new() -> Self {
         // TODO: Fetch from env
         let address = "127.0.0.1:46600";
-        let stream = FireflyStream::connect(address)
+        let mut stream = FireflyStream::connect(address)
             .await
             .expect("Could not connect to Firefly database");
+
+        stream.default_ttl = 60 * 60 * 24 * 30; // 30 days
 
         FireflyDataProvider { stream }
     }

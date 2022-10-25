@@ -44,6 +44,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .app_data(thread_db.clone())
             .service(resource("/register").route(post().to(endpoints::register)))
+            .service(resource("/login").route(post().to(endpoints::add_login)))
             .service(
                 resource("/me")
                     .wrap(AuthenticationService::new(thread_db.clone()))

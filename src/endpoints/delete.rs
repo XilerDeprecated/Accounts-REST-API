@@ -2,7 +2,7 @@ use paperclip::actix::{api_v2_operation, web::Json, Apiv2Schema};
 use serde::Serialize;
 
 use crate::{
-    errors::ClientError,
+    errors::HttpError,
     structs::{
         session::Session,
         user::{FullUser, User},
@@ -21,7 +21,7 @@ pub struct UserRegistrationResponse {
 
 /// Delete your account
 #[api_v2_operation]
-pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Status>, ClientError> {
+pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Status>, HttpError> {
     let mut persistent = db.persistent.lock().unwrap();
     let res = persistent.delete_user(user.id).await;
     drop(persistent);
@@ -34,7 +34,7 @@ pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Sta
         Ok(_) => Ok(Json(Status {
             message: "success".to_string(),
         })),
-        Err(e) => Err(ClientError::BadRequest(Status {
+        Err(e) => Err(HttpError::BadRequest(Status {
             message: e.to_string(),
         })),
     }

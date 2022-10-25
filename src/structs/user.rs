@@ -30,6 +30,12 @@ pub struct UserRegistration {
     pub password: String,
 }
 
+#[derive(Deserialize, Apiv2Schema)]
+pub struct UserLogin {
+    pub username: String,
+    pub password: String,
+}
+
 #[derive(Clone, Apiv2Security)]
 #[openapi(
     apiKey,

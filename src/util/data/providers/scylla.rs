@@ -5,7 +5,7 @@ use chrono::Duration;
 use scylla::{
     frame::value::{Time, ValueList},
     prepared_statement::PreparedStatement,
-    IntoTypedRows, Session, SessionBuilder,
+    FromRow, IntoTypedRows, Session, SessionBuilder,
 };
 use uuid::Uuid;
 
@@ -17,12 +17,24 @@ struct PreparedQueries {
     pub get_id_from_email: PreparedStatement,
     pub create_user: PreparedStatement,
     pub delete_user: PreparedStatement,
+    pub get_user_from_username: PreparedStatement,
+    pub get_user_from_email: PreparedStatement,
 }
 
 pub struct ScyllaDataProvider {
     session: Session,
     prepared: PreparedQueries,
 }
+
+type UserRow = (
+    Uuid,
+    String,
+    String,
+    Duration,
+    Option<String>,
+    Option<i16>,
+    Option<HashMap<i16, String>>,
+);
 
 impl ScyllaDataProvider {
     pub async fn new() -> Self {
@@ -52,6 +64,14 @@ impl ScyllaDataProvider {
             get_id_from_email: prepare_query(&session, "SELECT id FROM accounts.users WHERE email = ? LIMIT 1;").await,
             create_user: prepare_query(&session, "INSERT INTO accounts.users (id, username, email, created_at, authentication, verification_token) VALUES (?, ?, ?, ?, ?, ?);").await,
             delete_user: prepare_query(&session, "DELETE FROM accounts.users WHERE id = ?;").await,
+            get_user_from_username: prepare_query(
+                &session,
+                "SELECT id, username, email, created_at, verification_token, roles, authentication FROM accounts.users WHERE username = ? LIMIT 1;",
+            ).await,
+            get_user_from_email: prepare_query(
+                &session,
+                "SELECT id, username, email, created_at, verification_token, roles, authentication FROM accounts.users WHERE email = ? LIMIT 1;",
+            ).await,
         };
 
         ScyllaDataProvider { session, prepared }
@@ -67,51 +87,54 @@ impl ScyllaDataProvider {
             .len()
             == 1
     }
-}
 
-#[async_trait]
-impl PersistentStorageProvider for ScyllaDataProvider {
-    async fn get_user_by_id(&self, id: Uuid) -> Option<FullUser> {
-        let res = self.session.execute(&self.prepared.get_user, (id,)).await;
+    async fn get_first<T: FromRow>(
+        &self,
+        prepared: &PreparedStatement,
+        args: impl ValueList,
+    ) -> Option<T> {
+        let res = self.session.execute(prepared, args).await;
 
         if let Ok(query) = res {
             if let Some(rows) = query.rows {
-                if let Some(row) = rows
-                    .into_typed::<(
-                        Uuid,
-                        String,
-                        String,
-                        Duration,
-                        Option<String>,
-                        Option<i16>,
-                        Option<HashMap<i16, String>>,
-                    )>()
-                    .next()
-                {
-                    let (
-                        id,
-                        username,
-                        email,
-                        created_at,
-                        verification_token,
-                        roles,
-                        authentication,
-                    ) = row.unwrap();
-
-                    return Some(FullUser {
-                        id,
-                        username,
-                        email,
-                        created_at,
-                        verification_token,
-                        roles: roles.unwrap_or_default() as usize,
-                        authentication: authentication.unwrap_or_default(),
-                    });
+                if let Some(row) = rows.into_typed::<T>().next() {
+                    return Some(row.unwrap());
                 }
             }
         }
 
         None
+    }
+
+    async fn user_query(
+        &self,
+        prepared: &PreparedStatement,
+        args: impl ValueList,
+    ) -> Option<FullUser> {
+        let res: Option<UserRow> = self.get_first(prepared, args).await;
+
+        if let Some(row) = res {
+            let (id, username, email, created_at, verification_token, roles, authentication) = row;
+
+            return Some(FullUser {
+                id,
+                username,
+                email,
+                created_at,
+                verification_token,
+                roles: roles.unwrap_or_default() as usize,
+                authentication: authentication.unwrap_or_default(),
+            });
+        }
+
+        None
+    }
+}
+
+#[async_trait]
+impl PersistentStorageProvider for ScyllaDataProvider {
+    async fn get_user_by_id(&self, id: Uuid) -> Option<FullUser> {
+        self.user_query(&self.prepared.get_user, (id,)).await
     }
 
     async fn does_username_exist(&self, username: String) -> bool {
@@ -147,7 +170,7 @@ impl PersistentStorageProvider for ScyllaDataProvider {
             .await
         {
             Ok(_) => Ok(()),
-            Err(_) => Err("Failed to create user".to_string()),
+            Err(_) => Err("Failed to create user.".to_string()),
         }
     }
 
@@ -160,5 +183,15 @@ impl PersistentStorageProvider for ScyllaDataProvider {
             Ok(_) => Ok(()),
             Err(_) => Err("Failed to delete user".to_string()),
         }
+    }
+
+    async fn get_user_by_username(&self, username: String) -> Option<FullUser> {
+        self.user_query(&self.prepared.get_user_from_username, (username,))
+            .await
+    }
+
+    async fn get_user_by_email(&self, email: String) -> Option<FullUser> {
+        self.user_query(&self.prepared.get_user_from_email, (email,))
+            .await
     }
 }
