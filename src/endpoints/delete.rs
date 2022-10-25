@@ -27,8 +27,7 @@ pub async fn delete_account(db: FullDatabase, user: FullUser) -> Result<Json<Sta
     drop(persistent);
 
     let mut temporary = db.temporary.lock().unwrap();
-    let keys = temporary.get_by_value(user.id.to_string()).await;
-    temporary.drop_all(keys).await;
+    temporary.drop_all(user.id.to_string()).await;
     drop(temporary);
 
     match res {

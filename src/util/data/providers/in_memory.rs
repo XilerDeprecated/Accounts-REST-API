@@ -83,18 +83,8 @@ impl TemporaryStorageProvider for InMemoryDataProvider {
         true
     }
 
-    async fn get_by_value(&self, value: String) -> Vec<String> {
-        self.sessions
-            .iter()
-            .filter(|(_, v)| **v == value)
-            .map(|(k, _)| k.to_string())
-            .collect()
-    }
-
-    async fn drop_all(&mut self, keys: Vec<String>) -> bool {
-        for key in keys {
-            self.delete(key).await;
-        }
+    async fn drop_all(&mut self, value: String) -> bool {
+        self.sessions.retain(|_, v| v != &value);
         true
     }
 }

@@ -12,6 +12,7 @@ async-trait = "0.1.57"
 chrono = { version = "0.4.22", features = ["serde"] }
 enum-display-derive = "0.1.1"
 env_logger = "0.9.1"
+ffly-rs = "0.0.5"
 futures = "0.3.24"
 paperclip = { version = "0.7.1", features = ["actix4", "v3"] }
 rand = "0.8.5"
