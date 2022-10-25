@@ -15,7 +15,7 @@ use crate::{
     },
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
-    util::sessions::create_browser_session,
+    util::{hashing::argon2_hash, sessions::create_browser_session},
 };
 
 /// Merge the user with the session details
@@ -42,8 +42,8 @@ pub async fn register(
     let created_at = Duration::seconds(Utc::now().timestamp());
     let id = Uuid::new_v4();
     let mut authentication = HashMap::new();
-    // TODO: Hash password
-    authentication.insert(0, body.password.clone());
+    let password = argon2_hash(&body.password);
+    authentication.insert(0, password);
 
     let full_user = FullUser {
         id,

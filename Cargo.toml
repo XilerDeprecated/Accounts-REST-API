@@ -16,6 +16,7 @@ ffly-rs = "0.0.5"
 futures = "0.3.24"
 paperclip = { version = "0.7.1", features = ["actix4", "v3"] }
 rand = "0.8.5"
+rust-argon2 = "1.0.0"
 scylla = "0.6.1"
 serde = { version = "1.0.145", features = ["derive"] }
 tokio = "1.21.2"

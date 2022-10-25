@@ -1,4 +1,5 @@
 use actix_web::{web::Json, HttpRequest};
+use argon2::verify_encoded;
 use paperclip::actix::api_v2_operation;
 
 use crate::{
@@ -46,8 +47,8 @@ pub async fn add_login(db: FullDatabase, body: Json<UserLogin>, data: HttpReques
             }))
         }
     };
-    // TODO: Hash passwd in check
-    if password != &body.password {
+
+    if !verify_encoded(&password, body.password.as_bytes()).unwrap() {
         return no_match();
     }
 
