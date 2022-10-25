@@ -37,6 +37,10 @@ pub async fn register(
         return Err(HttpError::BadRequest(Status {
             message: "Username and email are required. Your password length must also be more than 8. (are you messing with the API? The checks should be handled by the frontend and a basic SHA hash should also be performed there?)".to_string(),
         }));
+    } else if body.username.len() > 64 || body.email.len() > 64 || body.password.len() > 128 {
+        return Err(HttpError::BadRequest(Status {
+            message: "Username, email and password must be less than 64, 64 and 128 characters respectively.".to_string(),
+        }));
     }
 
     let created_at = Duration::seconds(Utc::now().timestamp());
@@ -60,7 +64,10 @@ pub async fn register(
     let res = persistent.register_user(full_user.clone()).await;
     drop(persistent);
     if let Err(e) = res {
-        return Err(HttpError::InternalServerError(Status { message: e }));
+        if e.contains("Failed") {
+            return Err(HttpError::InternalServerError(Status { message: e }));
+        }
+        return Err(HttpError::BadRequest(Status { message: e }));
     }
 
     let token = create_browser_session(data)?;
