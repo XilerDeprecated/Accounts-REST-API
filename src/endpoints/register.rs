@@ -16,7 +16,7 @@ use crate::{
     },
     traits::{PersistentStorageProvider, TemporaryStorageProvider},
     types::FullDatabase,
-    util::{hashing::argon2_hash, sessions::create_browser_session},
+    util::{hashing::argon2_hash, random::random_string, sessions::create_browser_session},
 };
 
 /// Merge the user with the session details
@@ -57,8 +57,7 @@ pub async fn register(
         created_at,
         roles: 0,
         authentication,
-        // TODO: Generate verification token
-        verification_token: None,
+        verification_token: Some(random_string(256)),
     };
 
     let persistent = db.persistent.lock().unwrap();

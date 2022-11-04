@@ -56,6 +56,11 @@ async fn main() -> std::io::Result<()> {
                     .wrap(AuthenticationService::new(thread_db.clone()))
                     .route(delete().to(endpoints::logout)),
             )
+            .service(
+                resource("/verify")
+                    .wrap(AuthenticationService::new(thread_db.clone()))
+                    .route(get().to(endpoints::verify_user)),
+            )
             // OpenAPI spec:
             .with_json_spec_at("/spec/v2")
             .with_json_spec_v3_at("/spec/v3")

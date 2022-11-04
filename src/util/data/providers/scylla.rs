@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::Duration;
 use scylla::{
-    frame::value::{Time, ValueList},
-    prepared_statement::PreparedStatement,
-    FromRow, IntoTypedRows, Session, SessionBuilder,
+    frame::value::ValueList, prepared_statement::PreparedStatement, FromRow, IntoTypedRows,
+    Session, SessionBuilder,
 };
 use uuid::Uuid;
 
@@ -24,7 +23,6 @@ struct PreparedQueries {
 
     pub verify_user: PreparedStatement,
 
-    pub add_authentication_method: PreparedStatement,
     pub get_authentication_methods: PreparedStatement,
     pub update_authentication_method_value: PreparedStatement,
     pub remove_authentication_method: PreparedStatement,
@@ -39,7 +37,7 @@ type UserRow = (
     Uuid,
     String,
     String,
-    Duration,
+    i64,
     Option<String>,
     Option<i16>,
     Option<HashMap<i16, String>>,
@@ -83,7 +81,6 @@ impl ScyllaDataProvider {
             ).await,
             verify_user: prepare_query(&session, "UPDATE accounts.users SET verification_token = null WHERE id = ?;").await,
 
-            add_authentication_method: prepare_query(&session, "UPDATE accounts.users SET authentication[?] = ? WHERE id = ?;").await,
             get_authentication_methods: prepare_query(&session, "SELECT authentication FROM accounts.users WHERE id = ? LIMIT 1;").await,
             update_authentication_method_value: prepare_query(&session, "UPDATE accounts.users SET authentication[?] = ? WHERE id = ?;").await,
             remove_authentication_method: prepare_query(&session, "DELETE authentication[?] FROM accounts.users WHERE id = ?;").await,
@@ -135,7 +132,7 @@ impl ScyllaDataProvider {
                 id,
                 username,
                 email,
-                created_at,
+                created_at: Duration::seconds(created_at),
                 verification_token,
                 roles: roles.unwrap_or_default() as usize,
                 authentication: authentication.unwrap_or_default(),
@@ -177,7 +174,7 @@ impl PersistentStorageProvider for ScyllaDataProvider {
                     user.id,
                     user.username,
                     user.email,
-                    Time(user.created_at),
+                    user.created_at.num_seconds(),
                     user.authentication,
                     user.verification_token,
                 ),
@@ -218,25 +215,6 @@ impl PersistentStorageProvider for ScyllaDataProvider {
         {
             Ok(_) => Ok(()),
             Err(_) => Err("Could not verify user!".to_string()),
-        }
-    }
-
-    async fn add_authentication_method(
-        &self,
-        id: Uuid,
-        method: i16,
-        value: String,
-    ) -> Result<(), String> {
-        match self
-            .session
-            .execute(
-                &self.prepared.add_authentication_method,
-                (method, value, id),
-            )
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(_) => Err("Could not add authentication method!".to_string()),
         }
     }
 

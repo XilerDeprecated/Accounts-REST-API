@@ -19,6 +19,7 @@ pub struct User {
     pub roles: usize,
     /// An int that contains the linked platforms, can be parsed by using bitwize operations.
     pub authentication: i16,
+    pub verified: bool,
 }
 
 /// Contains the minimum data for a user to register.
@@ -66,6 +67,7 @@ impl FullUser {
             created_at: self.created_at.num_seconds() as usize,
             roles: self.roles,
             authentication: self.authentication.keys().fold(0, |acc, x| acc | x),
+            verified: self.verification_token.is_none(),
         }
     }
 }
