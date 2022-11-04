@@ -57,7 +57,7 @@ pub async fn register(
         created_at,
         roles: 0,
         authentication,
-        verification_token: Some(random_string(256)),
+        verification_token: Some(random_string(64)),
     };
 
     let persistent = db.persistent.lock().unwrap();
