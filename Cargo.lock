@@ -7,9 +7,11 @@ name = "accounts-rest-api"
 version = "0.1.0"
 dependencies = [
  "actix-cors",
+ "actix-router",
  "actix-web",
  "async-trait",
  "chrono",
+ "derive_more",
  "enum-display-derive",
  "env_logger",
  "ffly-rs",

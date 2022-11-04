@@ -1,3 +1,4 @@
+mod authentication;
 mod delete;
 mod get;
 mod login;
@@ -5,6 +6,7 @@ mod logout;
 mod register;
 mod verify;
 
+pub use authentication::{remove_authentication_method, update_authentication_method};
 pub use delete::delete_account;
 pub use get::get_account;
 pub use login::add_login;

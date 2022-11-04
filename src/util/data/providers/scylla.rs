@@ -243,18 +243,21 @@ impl PersistentStorageProvider for ScyllaDataProvider {
         &self,
         id: Uuid,
         method: i16,
-        new_value: String,
+        new_value: &str,
     ) -> Result<(), String> {
         match self
             .session
             .execute(
                 &self.prepared.update_authentication_method_value,
-                (new_value, method, id),
+                (method, new_value, id),
             )
             .await
         {
             Ok(_) => Ok(()),
-            Err(_) => Err("Could not update authentication method value!".to_string()),
+            Err(e) => {
+                println!("{:?}", e);
+                return Err("Could not update authentication method value!".to_string());
+            }
         }
     }
 

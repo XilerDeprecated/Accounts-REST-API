@@ -26,7 +26,7 @@ pub trait PersistentStorageProvider {
         &self,
         id: Uuid,
         method: i16,
-        new_value: String,
+        new_value: &str,
     ) -> Result<(), String>;
     async fn get_authentication_methods(&self, id: Uuid) -> Result<Vec<i16>, String>;
 }

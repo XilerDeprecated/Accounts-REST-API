@@ -5,7 +5,7 @@ use actix_web::{middleware::Logger, web::Data, App, HttpServer};
 use env_logger::Env;
 use middleware::AuthenticationService;
 use paperclip::actix::{
-    web::{delete, get, post, resource},
+    web::{delete, get, post, put, resource},
     OpenApiExt,
 };
 use types::FullDatabase;
@@ -60,6 +60,12 @@ async fn main() -> std::io::Result<()> {
                 resource("/verify")
                     .wrap(AuthenticationService::new(thread_db.clone()))
                     .route(get().to(endpoints::verify_user)),
+            )
+            .service(
+                resource("/authentication/{method}")
+                    .wrap(AuthenticationService::new(thread_db.clone()))
+                    .route(delete().to(endpoints::remove_authentication_method))
+                    .route(put().to(endpoints::update_authentication_method)),
             )
             // OpenAPI spec:
             .with_json_spec_at("/spec/v2")
