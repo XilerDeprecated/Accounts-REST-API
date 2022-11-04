@@ -15,10 +15,19 @@ struct PreparedQueries {
     pub get_user: PreparedStatement,
     pub get_id_from_username: PreparedStatement,
     pub get_id_from_email: PreparedStatement,
+
     pub create_user: PreparedStatement,
     pub delete_user: PreparedStatement,
+
     pub get_user_from_username: PreparedStatement,
     pub get_user_from_email: PreparedStatement,
+
+    pub verify_user: PreparedStatement,
+
+    pub add_authentication_method: PreparedStatement,
+    pub get_authentication_methods: PreparedStatement,
+    pub update_authentication_method_value: PreparedStatement,
+    pub remove_authentication_method: PreparedStatement,
 }
 
 pub struct ScyllaDataProvider {
@@ -72,6 +81,12 @@ impl ScyllaDataProvider {
                 &session,
                 "SELECT id, username, email, created_at, verification_token, roles, authentication FROM accounts.users WHERE email = ? LIMIT 1;",
             ).await,
+            verify_user: prepare_query(&session, "UPDATE accounts.users SET verification_token = null WHERE id = ?;").await,
+
+            add_authentication_method: prepare_query(&session, "UPDATE accounts.users SET authentication[?] = ? WHERE id = ?;").await,
+            get_authentication_methods: prepare_query(&session, "SELECT authentication FROM accounts.users WHERE id = ? LIMIT 1;").await,
+            update_authentication_method_value: prepare_query(&session, "UPDATE accounts.users SET authentication[?] = ? WHERE id = ?;").await,
+            remove_authentication_method: prepare_query(&session, "DELETE authentication[?] FROM accounts.users WHERE id = ?;").await,
         };
 
         ScyllaDataProvider { session, prepared }
@@ -193,5 +208,86 @@ impl PersistentStorageProvider for ScyllaDataProvider {
     async fn get_user_by_email(&self, email: String) -> Option<FullUser> {
         self.user_query(&self.prepared.get_user_from_email, (email,))
             .await
+    }
+
+    async fn verify_user(&self, id: Uuid) -> Result<(), String> {
+        match self
+            .session
+            .execute(&self.prepared.verify_user, (id,))
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Could not verify user!".to_string()),
+        }
+    }
+
+    async fn add_authentication_method(
+        &self,
+        id: Uuid,
+        method: i16,
+        value: String,
+    ) -> Result<(), String> {
+        match self
+            .session
+            .execute(
+                &self.prepared.add_authentication_method,
+                (method, value, id),
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Could not add authentication method!".to_string()),
+        }
+    }
+
+    async fn get_authentication_methods(&self, id: Uuid) -> Result<Vec<i16>, String> {
+        match self
+            .session
+            .execute(&self.prepared.get_authentication_methods, (id,))
+            .await
+        {
+            Ok(query) => {
+                if let Some(rows) = query.rows {
+                    if let Some(row) = rows.into_typed::<(HashMap<i16, String>,)>().next() {
+                        let (methods,): (HashMap<i16, String>,) = row.unwrap();
+
+                        return Ok(methods.keys().cloned().collect());
+                    }
+                }
+
+                Err("Could not get authentication methods!".to_string())
+            }
+            Err(_) => Err("Could not get authentication methods!".to_string()),
+        }
+    }
+
+    async fn update_authentication_method_value(
+        &self,
+        id: Uuid,
+        method: i16,
+        new_value: String,
+    ) -> Result<(), String> {
+        match self
+            .session
+            .execute(
+                &self.prepared.update_authentication_method_value,
+                (new_value, method, id),
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Could not update authentication method value!".to_string()),
+        }
+    }
+
+    async fn remove_authentication_method(&self, id: Uuid, method: i16) -> Result<(), String> {
+        match self
+            .session
+            .execute(&self.prepared.remove_authentication_method, (method, id))
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err("Could not remove authentication method!".to_string()),
+        }
     }
 }

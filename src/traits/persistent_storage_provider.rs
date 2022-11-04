@@ -18,4 +18,21 @@ pub trait PersistentStorageProvider {
 
     async fn register_user(&self, user: FullUser) -> Result<(), String>;
     async fn delete_user(&self, id: Uuid) -> Result<(), String>;
+
+    async fn verify_user(&self, id: Uuid) -> Result<(), String>;
+
+    async fn add_authentication_method(
+        &self,
+        id: Uuid,
+        method: i16,
+        value: String,
+    ) -> Result<(), String>;
+    async fn remove_authentication_method(&self, id: Uuid, method: i16) -> Result<(), String>;
+    async fn update_authentication_method_value(
+        &self,
+        id: Uuid,
+        method: i16,
+        new_value: String,
+    ) -> Result<(), String>;
+    async fn get_authentication_methods(&self, id: Uuid) -> Result<Vec<i16>, String>;
 }
